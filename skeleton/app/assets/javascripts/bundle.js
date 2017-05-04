@@ -63,26 +63,51 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 0);
+/******/ 	return __webpack_require__(__webpack_require__.s = 3);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ (function(module, exports, __webpack_require__) {
+/***/ (function(module, exports) {
 
-const FollowToggle = __webpack_require__(1);
+const APIUtil = {
+  followUser: id => {
+    return $.ajax({
+      url: `/users/${id}/follow`,
+      method: 'POST',
+      dataType: "JSON"
+    });
+  },
 
-$(() => {
-  const $followButtons = $(".follow-toggle");
-  $followButtons.each( (idx, el) => {
-    const follow_toggle = new FollowToggle(el);
-  });
-});
+  unfollowUser: id => {
+      return $.ajax({
+      url: `/users/${id}/follow`,
+      method: 'DELETE',
+      dataType: "JSON"
+    });
+  },
+
+  searchUsers: (queryVal, success) => {
+    return $.ajax({
+      url: '/users/search',
+      method: 'GET',
+      dataType: "JSON",
+      data: {
+        query: queryVal
+      },
+      success: success
+    });
+  }
+}
+
+module.exports = APIUtil;
 
 
 /***/ }),
 /* 1 */
-/***/ (function(module, exports) {
+/***/ (function(module, exports, __webpack_require__) {
+
+const APIUtil = __webpack_require__(0);
 
 class FollowToggle {
   constructor(el) {
@@ -103,7 +128,6 @@ class FollowToggle {
   }
 
   toggleFollowState() {
-    // debugger
     if (this.followState === 'true') {
       this.followState = 'false';
     } else {
@@ -111,29 +135,89 @@ class FollowToggle {
     }
   }
 
-  handleClick() {
-    // this.$el.preventDefault();
-    // debugger
-    let httpMethod;
-    if (this.followState === "false") {
-      httpMethod = 'POST';
-    } else {
-      httpMethod = 'DELETE';
-    }
+  ajaxSuccess() {
+    this.toggleFollowState();
+    this.render();
+    this.enableButton();
+  }
 
-    $.ajax({
-      url: `/users/${this.userId}/follow`,
-      method: httpMethod,
-      dataType: "JSON",
-      success: () => {
-        this.toggleFollowState();
-        this.render();
-      }
-    });
+  enableButton(){
+    this.$el.prop("disabled", false);
+  }
+
+  disableButton(){
+    this.$el.prop("disabled", true);
+  }
+
+  handleClick(e) {
+    e.preventDefault();
+    this.disableButton();
+    if (this.followState === "false") {
+      APIUtil.followUser(this.userId).then(this.ajaxSuccess.bind(this));
+    } else {
+      APIUtil.unfollowUser(this.userId).then(this.ajaxSuccess.bind(this));
+    }
   }
 }
 
 module.exports = FollowToggle;
+
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const APIUtil = __webpack_require__(0);
+
+class UsersSearch {
+  constructor(el) {
+    this.$el = $(el);
+    this.$input = $(".users-search input");
+    this.$ul = $(".users-search ul");
+
+    this.handleInput = this.handleInput.bind(this);
+    this.$input.on("input", this.handleInput);
+    this.displayUsers = this.displayUsers.bind(this);
+  }
+
+  handleInput() {
+    let search = this.$input.val();
+
+    APIUtil.searchUsers(search, this.displayUsers);
+  }
+
+  displayUsers(users) {
+    this.$ul.empty();
+    users.forEach( (el) =>{
+      const $user = $("<li>");
+      $user.text(el.username);
+      this.$ul.append($user);
+    });
+  }
+}
+
+module.exports = UsersSearch;
+
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const FollowToggle = __webpack_require__(1);
+const UsersSearch = __webpack_require__(2);
+const APIUtil = __webpack_require__(0);
+
+$(() => {
+  const $followButtons = $(".follow-toggle");
+  $followButtons.each( (idx, el) => {
+    const followToggle = new FollowToggle(el);
+  });
+
+  const $usersSearch = $(".users-search");
+  $usersSearch.each( (idx, el) => {
+    const usersSearch = new UsersSearch(el);
+  })
+});
 
 
 /***/ })
